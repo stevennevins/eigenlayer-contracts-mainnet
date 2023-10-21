@@ -131,6 +131,9 @@ contract BLSSigCheckerExperimental is IBLSSignatureChecker {
             bytes32
         )
     {   
+        QuorumStakeTotals memory quorumStakeTotals;
+        quorumStakeTotals.totalStakeForQuorum = new uint96[](quorumNumbers.length);
+        quorumStakeTotals.signedStakeForQuorum = new uint96[](quorumNumbers.length);
         BN254.G1Point memory apk = BN254.G1Point(0, 0);
         for (uint i = 0; i < quorumNumbers.length; i++) {
             require(
@@ -143,63 +146,55 @@ contract BLSSigCheckerExperimental is IBLSSignatureChecker {
                 "BLSSignatureChecker.checkSignatures: quorumApk hash in storage does not match provided quorum apk"
             );
             apk = apk.plus(nonSignerStakesAndSignature.quorumApks[i]);
+
+            quorumStakeTotals.totalStakeForQuorum[i] = 
+                    stakeRegistry.getTotalStakeAtBlockNumberFromIndex(uint8(quorumNumbers[i]), referenceBlockNumber, nonSignerStakesAndSignature.totalStakeIndices[i]);
+            quorumStakeTotals.signedStakeForQuorum[i] = quorumStakeTotals.totalStakeForQuorum[i];
         }
         
-        QuorumStakeTotals memory quorumStakeTotals;
-        quorumStakeTotals.totalStakeForQuorum = new uint96[](quorumNumbers.length);
-        quorumStakeTotals.signedStakeForQuorum = new uint96[](quorumNumbers.length);
         bytes32[] memory nonSignerPubkeyHashes = new bytes32[](nonSignerStakesAndSignature.nonSignerPubkeys.length);
         {
-            uint256[] memory nonSignerQuorumBitmaps = new uint256[](nonSignerStakesAndSignature.nonSignerPubkeys.length);
-            {
-                uint256 signingQuorumBitmap = BitmapUtils.bytesArrayToBitmap(quorumNumbers);
+            uint32[] memory nonSignerForQuorumIndices = new uint32[](quorumNumbers.length);
+            uint256 signingQuorumBitmap = BitmapUtils.bytesArrayToBitmap(quorumNumbers);
 
-                for (uint i = 0; i < nonSignerStakesAndSignature.nonSignerPubkeys.length; i++) {
-                    nonSignerPubkeyHashes[i] = nonSignerStakesAndSignature.nonSignerPubkeys[i].hashG1Point();
-                    
-                    if (i != 0) {
-                        require(uint256(nonSignerPubkeyHashes[i]) > uint256(nonSignerPubkeyHashes[i - 1]), "BLSSignatureChecker.checkSignatures: nonSignerPubkeys not sorted");
-                    }
-
-                    nonSignerQuorumBitmaps[i] = 
-                        registryCoordinator.getQuorumBitmapByOperatorIdAtBlockNumberByIndex(
-                            nonSignerPubkeyHashes[i], 
-                            referenceBlockNumber, 
-                            nonSignerStakesAndSignature.nonSignerQuorumBitmapIndices[i]
-                        );
-                    
-                    apk = apk.plus(
-                        nonSignerStakesAndSignature.nonSignerPubkeys[i]
-                            .negate()
-                            .scalar_mul_tiny(
-                                BitmapUtils.countNumOnes(nonSignerQuorumBitmaps[i] & signingQuorumBitmap) 
-                            )
-                    );
+            for (uint i = 0; i < nonSignerStakesAndSignature.nonSignerPubkeys.length; i++) {
+                nonSignerPubkeyHashes[i] = nonSignerStakesAndSignature.nonSignerPubkeys[i].hashG1Point();
+                
+                if (i != 0) {
+                    require(uint256(nonSignerPubkeyHashes[i]) > uint256(nonSignerPubkeyHashes[i - 1]), "BLSSignatureChecker.checkSignatures: nonSignerPubkeys not sorted");
                 }
-            }
-            for (uint8 quorumNumberIndex = 0; quorumNumberIndex < quorumNumbers.length;) {
-                uint8 quorumNumber = uint8(quorumNumbers[quorumNumberIndex]);
-                quorumStakeTotals.totalStakeForQuorum[quorumNumberIndex] = 
-                    stakeRegistry.getTotalStakeAtBlockNumberFromIndex(quorumNumber, referenceBlockNumber, nonSignerStakesAndSignature.totalStakeIndices[quorumNumberIndex]);
-                quorumStakeTotals.signedStakeForQuorum[quorumNumberIndex] = quorumStakeTotals.totalStakeForQuorum[quorumNumberIndex];
-                for (uint32 i = 0; i < nonSignerStakesAndSignature.nonSignerPubkeys.length; i++) {
-                    uint32 nonSignerForQuorumIndex = 0;
-                    if (BitmapUtils.numberIsInBitmap(nonSignerQuorumBitmaps[i], quorumNumber)) {
+
+                uint256 nonSignerQuorumBitmap = 
+                    registryCoordinator.getQuorumBitmapByOperatorIdAtBlockNumberByIndex(
+                        nonSignerPubkeyHashes[i], 
+                        referenceBlockNumber, 
+                        nonSignerStakesAndSignature.nonSignerQuorumBitmapIndices[i]
+                    );
+                
+                apk = apk.plus(
+                    nonSignerStakesAndSignature.nonSignerPubkeys[i]
+                        .negate()
+                        .scalar_mul_tiny(
+                            BitmapUtils.countNumOnes(nonSignerQuorumBitmap & signingQuorumBitmap) 
+                        )
+                );
+                
+                for (uint8 quorumNumberIndex = 0; quorumNumberIndex < quorumNumbers.length;) {                
+                    if (BitmapUtils.numberIsInBitmap(nonSignerQuorumBitmap, uint8(quorumNumbers[quorumNumberIndex]))) {
                         quorumStakeTotals.signedStakeForQuorum[quorumNumberIndex] -=
                             stakeRegistry.getStakeForQuorumAtBlockNumberFromOperatorIdAndIndex(
-                                quorumNumber,
+                                uint8(quorumNumbers[quorumNumberIndex]),
                                 referenceBlockNumber,
                                 nonSignerPubkeyHashes[i],
-                                nonSignerStakesAndSignature.nonSignerStakeIndices[quorumNumberIndex][nonSignerForQuorumIndex]
+                                nonSignerStakesAndSignature.nonSignerStakeIndices[quorumNumberIndex][nonSignerForQuorumIndices[quorumNumberIndex]]
                             );
                         unchecked {
-                            ++nonSignerForQuorumIndex;
+                            ++nonSignerForQuorumIndices[quorumNumberIndex];
                         }
                     }
-                }
-
-                unchecked {
-                    ++quorumNumberIndex;
+                    unchecked {
+                        ++quorumNumberIndex;
+                    }
                 }
             }
         }
