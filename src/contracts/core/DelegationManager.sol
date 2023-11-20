@@ -29,6 +29,9 @@ contract DelegationManager is Initializable, OwnableUpgradeable, Pausable, Deleg
     // @dev Index for flag that pauses completing existing withdrawals when set.
     uint8 internal constant PAUSED_EXIT_WITHDRAWAL_QUEUE = 2;
 
+    // @dev State variable to store the Merkle root of approved delegations.
+    bytes32 public merkleRoot;
+
     // @dev Chain ID at the time of contract deployment
     uint256 internal immutable ORIGINAL_CHAIN_ID;
 
@@ -209,6 +212,34 @@ contract DelegationManager is Initializable, OwnableUpgradeable, Pausable, Deleg
         // go through the internal delegation flow, checking the `approverSignatureAndExpiry` if applicable
         _delegate(staker, operator, approverSignatureAndExpiry, approverSalt);
     }
+
+    // Function to update the Merkle root, restricted to the owner or authorized operators.
+    function updateMerkleRoot(bytes32 _newMerkleRoot) external onlyOwner {
+        merkleRoot = _newMerkleRoot;
+    }
+
+    /**
+     * @notice Delegates stake to an operator using a Merkle proof.
+     * @param operator The operator to whom the stake is being delegated.
+     * @param merkleProof A Merkle proof demonstrating the delegation's inclusion in the approved set.
+     * 
+     * This function allows a staker to delegate their stake to an approved operator by providing a valid Merkle proof. 
+     * The Merkle proof verifies that the delegation has been pre-approved by the operator and included in the published Merkle root.
+     */
+    function delegateWithMerkleProof(
+        address operator,
+        bytes32[] calldata merkleProof
+    ) external {
+        // Construct the leaf node from the delegator's address and the operator's address.
+        bytes32 leaf = keccak256(abi.encodePacked(msg.sender, operator));
+
+        // Verify the provided Merkle proof against the stored Merkle root.
+        require(verifyMerkleProof(merkleProof, leaf), "Invalid Merkle Proof");
+
+        // go through the internal delegation flow, checking the `approverSignatureAndExpiry` if applicable
+        _delegateWithMerkleProof(msg.sender, operator);
+    }
+
 
     /**
      * @notice Owner-only function for modifying the value of the `withdrawalDelayBlocks` variable.
@@ -548,6 +579,54 @@ contract DelegationManager is Initializable, OwnableUpgradeable, Pausable, Deleg
         // push the operator's new stake to the StakeRegistry
         _pushOperatorStakeUpdate(operator);
     }
+
+    /**
+     * @notice Handles delegation logic for delegations validated by Merkle proof.
+     * @param staker The address delegating their stake.
+     * @param operator The operator to whom the stake is being delegated.
+     *
+     * This function is called for delegations that have been pre-approved and included in the Merkle tree.
+     * It assumes that the Merkle proof validation has already been done before calling this function.
+     */
+    function _delegateWithMerkleProof(
+        address staker,
+        address operator
+    ) internal onlyWhenNotPaused(PAUSED_NEW_DELEGATION) {
+        require(!isDelegated(staker), "DelegationManager: Staker is already actively delegated");
+        require(isOperator(operator), "DelegationManager: Operator is not registered");
+
+        // Record the delegation relationship between the staker and operator
+        delegatedTo[staker] = operator;
+        emit StakerDelegated(staker, operator);
+
+        (IStrategy[] memory strategies, uint256[] memory shares) = getDelegatableShares(staker);
+        for (uint256 i = 0; i < strategies.length; i++) {
+            _increaseOperatorShares({
+                operator: operator,
+                staker: staker,
+                strategy: strategies[i],
+                shares: shares[i]
+            });
+        }
+
+        (IStrategy[] memory strategies, uint256[] memory shares)
+            = getDelegatableShares(staker);
+
+        for (uint256 i = 0; i < strategies.length;) {
+            _increaseOperatorShares({
+                operator: operator,
+                staker: staker,
+                strategy: strategies[i],
+                shares: shares[i]
+            });
+
+            unchecked { ++i; }
+        }
+
+        // push the operator's new stake to the StakeRegistry
+        _pushOperatorStakeUpdate(operator);
+    }
+
 
     /**
      * @dev commented-out param (middlewareTimesIndex) is the index in the operator that the staker who triggered the withdrawal was delegated to's middleware times array
@@ -944,5 +1023,34 @@ contract DelegationManager is Initializable, OwnableUpgradeable, Pausable, Deleg
      */
     function _calculateDomainSeparator() internal view returns (bytes32) {
         return keccak256(abi.encode(DOMAIN_TYPEHASH, keccak256(bytes("EigenLayer")), block.chainid, address(this)));
+    }
+
+    /**
+     * @notice Verifies a Merkle proof for a given leaf node against the stored Merkle root.
+     * @param proof An array of bytes32 hashes representing the Merkle proof.
+     * @param leaf The leaf node to verify - typically a hash of the data being proven (e.g., delegator and operator addresses).
+     * @return A boolean indicating whether the leaf is part of the Merkle tree.
+     *
+     * This function works by recomputing the Merkle root using the provided proof and the given leaf node.
+     * If the recomputed root matches the stored root, the proof is valid, and the function returns true.
+     */
+    function verifyMerkleProof(bytes32[] memory proof, bytes32 leaf) public view returns (bool) {
+        bytes32 computedHash = leaf;
+
+        for (uint256 i = 0; i < proof.length; i++) {
+            bytes32 proofElement = proof[i];
+
+            // Check the order of hashes and concatenate
+            if (computedHash <= proofElement) {
+                // Hash the current computed hash with the next element of the proof
+                computedHash = keccak256(abi.encodePacked(computedHash, proofElement));
+            } else {
+                // Hash the next element of the proof with the current computed hash
+                computedHash = keccak256(abi.encodePacked(proofElement, computedHash));
+            }
+        }
+
+        // Check if the computed hash (root) is equal to the stored root
+        return computedHash == merkleRoot;
     }
 }
