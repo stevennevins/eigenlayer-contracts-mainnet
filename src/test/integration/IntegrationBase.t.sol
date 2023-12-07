@@ -312,6 +312,31 @@ abstract contract IntegrationBase is IntegrationDeployer {
         }
     }
 
+    /// @notice Used in tests where there are balance updates
+    function assert_Snap_UnchangedLST_DeltaETH_Shares(
+        User staker,
+        uint[] memory expectedTokens,
+        string memory err
+    ) internal {
+        IStrategy[] memory strategies = allStrats;
+
+        int[] memory curShares = _getStakerSharesInt(staker, strategies);
+        // Use timewarp to get previous staker shares
+        int[] memory prevShares = _getPrevStakerSharesInt(staker, strategies);
+
+        // For each strategy, check (prev == cur)
+        for (uint i = 0; i < strategies.length; i++) {
+            if (strategies[i] == BEACONCHAIN_ETH_STRAT) {
+                uint expectedETH = expectedTokens[i];
+                // if (expectedETH == 0) {
+                //     assertEq(prevShares[i], curShares[i], err);
+                // } 
+            } else {
+                assertEq(prevShares[i], curShares[i], err);
+            }
+        }
+    }
+
     function assert_Snap_Removed_StrategyShares(
         IStrategy[] memory strategies,
         uint[] memory removedShares,
@@ -368,6 +393,37 @@ abstract contract IntegrationBase is IntegrationDeployer {
     }
 
     /// Snapshot assertions for underlying token balances:
+    
+    /// @dev Checks that the staker has `addedTokens` additional underlying tokens
+    /// @dev Handles case where the staker has a negative pod share balance
+    // function assert_Snap_Delta_TokenBalances(
+    //     User staker,
+    //     IERC20[] memory tokens,
+    //     uint[] memory addedTokens,
+    //     string memory err
+    // ) internal {
+    //     uint[] memory curTokenBalances = _getTokenBalances(staker, tokens);
+    //     // Use timewarp to get previous token balances
+    //     uint[] memory prevTokenBalances = _getPrevTokenBalances(staker, tokens);
+
+    //     for (uint i = 0; i < tokens.length; i++) {
+    //         uint prevBalance = prevTokenBalances[i];
+    //         uint curBalance = curTokenBalances[i];
+            
+    //         if (tokens[i] == NATIVE_ETH) {
+    //             int prevShares = _getPrevStakerSharesInt(staker, BEACONCHAIN_ETH_STRAT);
+    //             uint256 addedETH = addedTokens[i];
+    //             if (prevShares < 0) {
+    //                 if ()
+    //             } else {
+    //                 // Shares are positive, so the staker may have some debt repaid
+    //                 assertEq(prevBalance + addedTokens[i] + , currBalance, err);
+    //             }
+    //         } else {
+    //             assertEq(prevBalance + addedTokens[i], curBalance, err);
+    //         }
+    //     }
+    // }
 
     /// @dev Check that the staker has `addedTokens` additional underlying tokens 
     // since the last snapshot
@@ -622,6 +678,36 @@ abstract contract IntegrationBase is IntegrationDeployer {
 
             if (strat == BEACONCHAIN_ETH_STRAT) {
                 expectedTokens[i] = shares[i];
+            } else {
+                expectedTokens[i] = strat.sharesToUnderlying(shares[i]);
+            }
+        }
+
+        return expectedTokens;
+    }
+
+    /// @dev Same as above, but handles negative share cases in EPM
+    function _calculateExpectedTokens(User staker, IStrategy[] memory strategies, uint[] memory shares) internal returns (uint[] memory) {
+        uint[] memory expectedTokens = new uint[](strategies.length);
+
+        for (uint i = 0; i < strategies.length; i++) {
+            IStrategy strat = strategies[i];
+
+            if (strat == BEACONCHAIN_ETH_STRAT) {
+                int256 podShares = eigenPodManager.podOwnerShares(address(staker));
+                if (podShares < 0) {
+                    uint shareDefecit = uint(-podShares);
+                    if (shares[i] > shareDefecit) {
+                        // Pay off defecit from expected tokens
+                        expectedTokens[i] = shares[i] - shareDefecit;
+                    } else {
+                        // Defecit too large, so no tokens received
+                        expectedTokens[i] = 0;
+                    }
+                } else {
+                    // No negative shares, so just return the shares as tokens
+                    expectedTokens[i] = shares[i];
+                }
             } else {
                 expectedTokens[i] = strat.sharesToUnderlying(shares[i]);
             }

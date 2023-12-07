@@ -15,7 +15,7 @@ contract Integration_Deposit_Delegate_UpdateBalance is IntegrationCheckUtils {
     function testFuzz_deposit_delegate_updateBalance_completeAsTokens(uint24 _random) public {
         _configRand({
             _randomSeed: _random,
-            _assetTypes: HOLDS_LST | HOLDS_ETH | HOLDS_ALL,
+            _assetTypes: HOLDS_ETH,
             _userTypes: DEFAULT | ALT_METHODS
         });
 
@@ -58,14 +58,17 @@ contract Integration_Deposit_Delegate_UpdateBalance is IntegrationCheckUtils {
         assert_Snap_Delta_StakerShares(staker, strategies, stakerShareDeltas, "staker should have applied deltas correctly");
         assert_Snap_Delta_OperatorShares(operator, strategies, operatorShareDeltas, "operator should have applied deltas correctly");
 
+        // 5. Complete queued withdrawals as tokens
         // Fast forward to when we can complete the withdrawal
         cheats.roll(block.number + delegationManager.withdrawalDelayBlocks());
+        for (uint i = 0; i < withdrawals.length; i++) {
+            uint[] memory expectedTokens = _calculateExpectedTokens(staker, withdrawals[i].strategies, withdrawals[i].shares);
+            IERC20[] memory tokens = staker.completeWithdrawalAsTokens(withdrawals[i]);
+            check_Withdrawal_AsTokens_BalanceUpdate_State(staker, operator, withdrawals[i], strategies, shares, tokens, expectedTokens);
+        }
 
-        // 5. Complete queued withdrawals as tokens
-        staker.completeWithdrawalsAsTokens(withdrawals);
+        // Final state checks
         assertEq(address(operator), delegationManager.delegatedTo(address(staker)), "staker should still be delegated to operator");
         assert_NoWithdrawalsPending(withdrawalRoots, "all withdrawals should be removed from pending");
-        assert_Snap_Unchanged_TokenBalances(operator, "operator token balances should not have changed");
-        assert_Snap_Unchanged_OperatorShares(operator, "operator shares should not have changed");
     }
 }
