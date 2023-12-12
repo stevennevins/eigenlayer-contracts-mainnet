@@ -315,7 +315,6 @@ abstract contract IntegrationBase is IntegrationDeployer {
     /// @notice Used in tests where there are balance updates
     function assert_Snap_UnchangedLST_DeltaETH_Shares(
         User staker,
-        uint[] memory expectedTokens,
         string memory err
     ) internal {
         IStrategy[] memory strategies = allStrats;
@@ -327,10 +326,13 @@ abstract contract IntegrationBase is IntegrationDeployer {
         // For each strategy, check (prev == cur)
         for (uint i = 0; i < strategies.length; i++) {
             if (strategies[i] == BEACONCHAIN_ETH_STRAT) {
-                uint expectedETH = expectedTokens[i];
-                // if (expectedETH == 0) {
-                //     assertEq(prevShares[i], curShares[i], err);
-                // } 
+                // TODO: case doesn't handle when shares are increased from a non-full
+                // withdrawal
+                if (prevShares[i] < 0) {
+                    assertEq(curShares[i], 0, err);
+                } else {
+                    assertEq(prevShares[i], curShares[i], err);
+                }
             } else {
                 assertEq(prevShares[i], curShares[i], err);
             }

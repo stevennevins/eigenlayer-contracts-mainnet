@@ -404,6 +404,8 @@ contract User_AltMethods is User {
                         validatorFieldsProofs: proofs.validatorFieldsProofs,
                         validatorFields: proofs.validatorFields
                     });
+
+                    emit log_named_int("pod owner shares: ", eigenPodManager.podOwnerShares(address(this)));
                 }
             } else {
                 // Approve token
