@@ -423,6 +423,13 @@ contract DelegationManager is Initializable, OwnableUpgradeable, Pausable, Deleg
         }
     }
 
+    function registerOperatorToAVSWithoutSig(address operator) external {
+        // Set the operator as registered
+        avsOperatorStatus[msg.sender][operator] = OperatorAVSRegistrationStatus.REGISTERED;
+
+        emit OperatorAVSRegistrationStatusUpdated(operator, msg.sender, OperatorAVSRegistrationStatus.REGISTERED);
+    }
+
     /**
      * @notice Called by owner to set the minimum withdrawal delay blocks for each passed in strategy
      * Note that the min number of blocks to complete a withdrawal of a strategy is 
