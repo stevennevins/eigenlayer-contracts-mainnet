@@ -147,7 +147,7 @@ library BeaconChainProofs {
         bytes32[] calldata validatorFields,
         bytes calldata validatorFieldsProof,
         uint40 validatorIndex
-    ) internal view {
+    ) public view {
         require(
             validatorFields.length == 2 ** VALIDATOR_FIELD_TREE_HEIGHT,
             "BeaconChainProofs.verifyValidatorFields: Validator fields has incorrect length"
@@ -188,7 +188,7 @@ library BeaconChainProofs {
         bytes32 latestBlockRoot,
         bytes32 beaconStateRoot,
         bytes calldata stateRootProof
-    ) internal view {
+    ) public view {
         require(
             stateRootProof.length == 32 * (BEACON_BLOCK_HEADER_FIELD_TREE_HEIGHT),
             "BeaconChainProofs.verifyStateRootAgainstLatestBlockRoot: Proof has incorrect length"
@@ -215,7 +215,7 @@ library BeaconChainProofs {
         bytes32[] calldata withdrawalFields,
         WithdrawalProof calldata withdrawalProof,
         uint64 denebForkTimestamp
-    ) internal view {
+    ) public view {
         require(
             withdrawalFields.length == 2 ** WITHDRAWAL_FIELD_TREE_HEIGHT,
             "BeaconChainProofs.verifyWithdrawal: withdrawalFields has incorrect length"

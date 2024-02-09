@@ -529,38 +529,38 @@ contract EigenPod is IEigenPod, Initializable, ReentrancyGuardUpgradeable, Eigen
             );
         }
 
-        // Verify passed-in validatorFields against verified beaconStateRoot:
-        BeaconChainProofs.verifyValidatorFields({
-            beaconStateRoot: beaconStateRoot,
-            validatorFields: validatorFields,
-            validatorFieldsProof: validatorFieldsProof,
-            validatorIndex: validatorIndex
-        });
+        // // Verify passed-in validatorFields against verified beaconStateRoot:
+        // BeaconChainProofs.verifyValidatorFields({
+        //     beaconStateRoot: beaconStateRoot,
+        //     validatorFields: validatorFields,
+        //     validatorFieldsProof: validatorFieldsProof,
+        //     validatorIndex: validatorIndex
+        // });
 
-        // Done with proofs! Now update the validator's balance and send to the EigenPodManager if needed
+        // // Done with proofs! Now update the validator's balance and send to the EigenPodManager if needed
 
-        uint64 currentRestakedBalanceGwei = validatorInfo.restakedBalanceGwei;
-        uint64 newRestakedBalanceGwei;
-        if (validatorEffectiveBalanceGwei > MAX_RESTAKED_BALANCE_GWEI_PER_VALIDATOR) {
-            newRestakedBalanceGwei = MAX_RESTAKED_BALANCE_GWEI_PER_VALIDATOR;
-        } else {
-            newRestakedBalanceGwei = validatorEffectiveBalanceGwei;
-        }
+        // uint64 currentRestakedBalanceGwei = validatorInfo.restakedBalanceGwei;
+        // uint64 newRestakedBalanceGwei;
+        // if (validatorEffectiveBalanceGwei > MAX_RESTAKED_BALANCE_GWEI_PER_VALIDATOR) {
+        //     newRestakedBalanceGwei = MAX_RESTAKED_BALANCE_GWEI_PER_VALIDATOR;
+        // } else {
+        //     newRestakedBalanceGwei = validatorEffectiveBalanceGwei;
+        // }
         
-        // Update validator balance and timestamp, and save to state:
-        validatorInfo.restakedBalanceGwei = newRestakedBalanceGwei;
-        validatorInfo.mostRecentBalanceUpdateTimestamp = oracleTimestamp;
-        _validatorPubkeyHashToInfo[validatorPubkeyHash] = validatorInfo;
+        // // Update validator balance and timestamp, and save to state:
+        // validatorInfo.restakedBalanceGwei = newRestakedBalanceGwei;
+        // validatorInfo.mostRecentBalanceUpdateTimestamp = oracleTimestamp;
+        // _validatorPubkeyHashToInfo[validatorPubkeyHash] = validatorInfo;
 
-        // If our new and old balances differ, calculate the delta and send to the EigenPodManager
-        if (newRestakedBalanceGwei != currentRestakedBalanceGwei) {
-            emit ValidatorBalanceUpdated(validatorIndex, oracleTimestamp, newRestakedBalanceGwei);
+        // // If our new and old balances differ, calculate the delta and send to the EigenPodManager
+        // if (newRestakedBalanceGwei != currentRestakedBalanceGwei) {
+        //     emit ValidatorBalanceUpdated(validatorIndex, oracleTimestamp, newRestakedBalanceGwei);
 
-            sharesDeltaGwei = _calculateSharesDelta({
-                newAmountGwei: newRestakedBalanceGwei,
-                previousAmountGwei: currentRestakedBalanceGwei
-            });
-        }
+        //     sharesDeltaGwei = _calculateSharesDelta({
+        //         newAmountGwei: newRestakedBalanceGwei,
+        //         previousAmountGwei: currentRestakedBalanceGwei
+        //     });
+        // }
     }
 
     function _verifyAndProcessWithdrawal(
