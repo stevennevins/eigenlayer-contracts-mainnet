@@ -128,6 +128,23 @@ contract AVSDirectory is
     }
 
     /**
+     * @notice Called by an avs to emit an `AVSStrategiesUpdated` event
+     * @param strategies List of strategies that are restakeable on an AVS
+     */
+    function updateAVSStrategies(address[] calldata strategies) external {
+        emit AVSStrategiesUpdated(msg.sender, strategies);
+    }
+
+    /**
+     * @notice Called by an avs to emit an `OperatorAVSStrategiesUpdated` event
+     * @param operator The address of the operator that is staking on the avs
+     * @param strategies The strategies that the operator is restaking on 
+     */
+    function updateOperatorStrategies(address operator, address[] calldata strategies) external {
+        emit OperatorAVSStrategiesUpdated(operator, msg.sender, strategies);
+    }
+
+    /**
      * @notice Called by an operator to cancel a salt that has been used to register with an AVS.
      * @param salt A unique and single use value associated with the approver signature.
      */

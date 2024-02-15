@@ -19,6 +19,12 @@ interface IAVSDirectory is ISignatureUtils {
     /// @notice Emitted when an operator's registration status for an AVS is updated
     event OperatorAVSRegistrationStatusUpdated(address indexed operator, address indexed avs, OperatorAVSRegistrationStatus status);
 
+    /// @notice Emitted when an AVS updates the strategies that can be restaked on it
+    event AVSStrategiesUpdated(address avs, address[] strategies);
+
+    /// @notice Emitted when an operator updates the strategies that they are restaking on an AVS
+    event OperatorAVSStrategiesUpdated(address operator, address avs, address[] strategies);
+
     /**
      * @notice Called by an avs to register an operator with the avs.
      * @param operator The address of the operator to register.
