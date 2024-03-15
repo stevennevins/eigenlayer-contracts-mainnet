@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "../interfaces/IEigenPodManager.sol";
 import "../permissions/Pausable.sol";
-import "./StrategyManagerStorage.sol";
+import "./StrategyManagerStorageV1.sol";
 
 /**
  * @title The primary entry- and exit-point for funds into and out of EigenLayer.
@@ -24,12 +24,12 @@ import "./StrategyManagerStorage.sol";
  * - recording deposit of ETH into settlement layer
  * - slashing of assets for permissioned strategies
  */
-contract StrategyManager is
+contract StrategyManagerV1 is
     Initializable,
     OwnableUpgradeable,
     ReentrancyGuardUpgradeable,
     Pausable,
-    StrategyManagerStorage
+    StrategyManagerStorageV1
 {
     using SafeERC20 for IERC20;
 
@@ -128,7 +128,7 @@ contract StrategyManager is
      * @param _eigenPodManager The contract that keeps track of EigenPod stakes for restaking beacon chain ether.
      */
     constructor(IDelegationManager _delegation, IEigenPodManager _eigenPodManager, ISlasher _slasher)
-        StrategyManagerStorage(_delegation, _eigenPodManager, _slasher)
+        StrategyManagerStorageV1(_delegation, _eigenPodManager, _slasher)
     {
         _disableInitializers();
         ORIGINAL_CHAIN_ID = block.chainid;

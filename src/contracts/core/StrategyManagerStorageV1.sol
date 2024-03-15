@@ -13,7 +13,7 @@ import "../interfaces/ISlasher.sol";
  * @notice Terms of Service: https://docs.eigenlayer.xyz/overview/terms-of-service
  * @notice This storage contract is separate from the logic to simplify the upgrade process.
  */
-abstract contract StrategyManagerStorage is IStrategyManager {
+abstract contract StrategyManagerStorageV1 is IStrategyManager {
     /// @notice The EIP-712 typehash for the contract's domain
     bytes32 public constant DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,uint256 chainId,address verifyingContract)");

@@ -29,7 +29,7 @@ import "./EigenPodPausingConstants.sol";
  * - keeping track of the balances of all validators of EigenPods, and their stake in EigenLayer
  * - withdrawing eth when withdrawals are initiated
  */
-contract EigenPodManager is Initializable, OwnableUpgradeable, Pausable, IEigenPodManager, EigenPodPausingConstants {
+contract EigenPodManagerV1 is Initializable, OwnableUpgradeable, Pausable, IEigenPodManager, EigenPodPausingConstants {
     /**
      * @notice Stored code of type(BeaconProxy).creationCode
      * @dev Maintained as a constant to solve an edge case - changes to OpenZeppelin's BeaconProxy code should not cause

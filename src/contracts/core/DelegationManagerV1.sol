@@ -12,7 +12,7 @@ import "../interfaces/ISlasher.sol";
  * @notice Terms of Service: https://docs.eigenlayer.xyz/overview/terms-of-service
  * @notice This storage contract is separate from the logic to simplify the upgrade process.
  */
-abstract contract DelegationManagerStorage is IDelegationManager {
+abstract contract DelegationManagerStorageV1 is IDelegationManager {
     /// @notice Gas budget provided in calls to DelegationTerms contracts
     uint256 internal constant LOW_LEVEL_GAS_BUDGET = 1e5;
 
