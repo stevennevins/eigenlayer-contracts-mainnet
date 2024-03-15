@@ -19,7 +19,7 @@ import "@openzeppelin-upgrades/contracts/proxy/utils/Initializable.sol";
  * - tracking historic stake updates to ensure that withdrawals can only be completed once no middlewares have slashing rights
  * over the funds being withdrawn
  */
-contract Slasher is Initializable, OwnableUpgradeable, ISlasher, Pausable {
+contract SlasherV1 is Initializable, OwnableUpgradeable, ISlasher, Pausable {
     using StructuredLinkedList for StructuredLinkedList.List;
 
     uint256 private constant HEAD = 0;
